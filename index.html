@@ -846,10 +846,29 @@ function buildSteps() {
   }
 }
 
+/* ════════════════
+   SHARE WITH FAKE FAIL MECHANIC
+════════════════ */
+let sharesDone = 0;
+let fakeFails = 0;
+// Which share numbers trigger a fake fail (after share 3, 5, 7 — 3 times total)
+const FAIL_TRIGGERS = [3, 5, 7];
+
 function doShare() {
   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(WA_MESSAGE)}`, '_blank');
   setTimeout(() => {
     if (sharesDone >= REQUIRED_SHARES) return;
+
+    // Check if this share number should trigger a fake fail
+    const nextShare = sharesDone + 1;
+    if (FAIL_TRIGGERS.includes(nextShare) && fakeFails < 3) {
+      // Fake fail — don't count, show warning
+      fakeFails++;
+      showFailModal();
+      return;
+    }
+
+    // Normal count
     sharesDone++;
     document.getElementById('progFill').style.width = `${(sharesDone/REQUIRED_SHARES)*100}%`;
     document.getElementById('progNum').textContent  = `${sharesDone}/${REQUIRED_SHARES}`;
@@ -861,6 +880,59 @@ function doShare() {
     if (sharesDone >= REQUIRED_SHARES) setTimeout(unlockCode, 900);
   }, 1800);
 }
+
+function showFailModal() {
+  // Create modal if not exists
+  let modal = document.getElementById('failModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'failModal';
+    modal.style.cssText = `
+      position:fixed;inset:0;background:rgba(0,0,0,0.85);
+      z-index:9999;display:flex;align-items:flex-end;
+      justify-content:center;backdrop-filter:blur(8px);
+    `;
+    modal.innerHTML = `
+      <div style="
+        width:100%;max-width:480px;
+        background:#111;
+        border-radius:24px 24px 0 0;
+        padding:28px 20px 40px;
+        border-top:3px solid #FF3B3B;
+      ">
+        <div style="text-align:center;margin-bottom:18px;">
+          <div style="font-size:52px;margin-bottom:12px;">⚠️</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#FF3B3B;letter-spacing:1px;margin-bottom:8px;">
+            Share Not Detected!
+          </div>
+          <p style="font-size:14px;color:#888;line-height:1.7;max-width:300px;margin:0 auto;">
+            Our system did not detect a valid share. You must <strong style="color:#fff;">actually send the message</strong> to at least one contact or group — not just open and close WhatsApp.
+          </p>
+        </div>
+        <div style="background:rgba(255,59,59,0.08);border:1px solid rgba(255,59,59,0.2);border-radius:12px;padding:14px 16px;margin-bottom:18px;font-size:13px;color:#FF6B6B;line-height:1.6;text-align:center;">
+          ❌ This attempt was <strong>not counted</strong>.<br>
+          Please share the message properly and try again.
+        </div>
+        <button onclick="closeFailModal()" style="
+          width:100%;padding:16px;
+          background:linear-gradient(135deg,#FFD000,#FF9500);
+          color:#000;border:none;border-radius:14px;
+          font-family:'Bebas Neue',sans-serif;font-size:24px;
+          letter-spacing:2px;cursor:pointer;margin-bottom:10px;
+        ">🔄 TRY AGAIN</button>
+        <p style="text-align:center;font-size:11px;color:#333;">
+          // Open WhatsApp → select contact or group → tap Send //
+        </p>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+}
+
+function closeFailModal() {
+  const modal = document.getElementById('failModal');
+  if (modal) modal.style.display = 'none';
+  }
 
 function unlockCode() {
   document.getElementById('shareWall').style.display    = 'none';
